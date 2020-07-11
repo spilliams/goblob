@@ -8,7 +8,7 @@ func main() {
 
 	// parse string
 	p := parse.NewBlobParser()
-	p.parse()
+	// p.Parse()
 
 	// output in json
 }
