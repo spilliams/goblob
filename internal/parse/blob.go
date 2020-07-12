@@ -30,6 +30,7 @@ func (bp *BlobParser) ParsedObject() interface{} {
 }
 
 func parse(s string) (interface{}, error) {
+	fmt.Printf("parse %s\n", s)
 	t, err := makeToken(s)
 	if err != nil {
 		return nil, err
@@ -66,36 +67,9 @@ const (
 	tokenStringKey = "s"
 )
 
-type token struct {
-	key    string
-	length int
-	value  string
-}
-
-func makeToken(s string) (token, error) {
-	split := strings.Split(s, ":")
-	if len(split) < 2 || len(split) > 3 {
-		return token{}, fmt.Errorf("input had only %d colon args (expected 2 or 3)", len(split))
-	}
-	runes := []rune(split[len(split)-1])
-	value := string(runes[0 : len(runes)-2])
-	t := token{
-		key:   split[0],
-		value: value,
-	}
-	if len(split) == 3 {
-		length, err := strconv.Atoi(split[1])
-		if err != nil {
-			return t, err
-		}
-		t.length = length
-	}
-
-	return t, nil
-}
-
 // ex: a:N:{i:0;...}
 func parseList(t token) ([]interface{}, error) {
+	fmt.Printf("parseList %v\n", t)
 	value := string(t.value[1 : len(t.value)-1])
 	split := strings.Split(value, ";")
 	list := []interface{}{}
@@ -114,6 +88,7 @@ func parseList(t token) ([]interface{}, error) {
 
 // ex: a:N:{s:3:"key";...}
 func parseMap(t token) (map[string]interface{}, error) {
+	fmt.Printf("parseMap %v\n", t)
 	value := string(t.value[1 : len(t.value)-1])
 	split := strings.Split(value, ";")
 	dict := map[string]interface{}{}
@@ -136,7 +111,9 @@ func parseMap(t token) (map[string]interface{}, error) {
 
 // ex: s:4:"abcd"
 func parseString(t token) (string, error) {
+	fmt.Printf("parseString %v\n", t)
 	s := t.value[1 : len(t.value)-1]
+	fmt.Printf("  s %s\n", s)
 	if t.length != len(s) {
 		return "", fmt.Errorf("string is the wrong length (expected %v, actual %v)", t.length, len(s))
 	}
@@ -144,9 +121,11 @@ func parseString(t token) (string, error) {
 }
 
 func parseInteger(t token) (int, error) {
+	fmt.Printf("parseInteger %v\n", t)
 	return strconv.Atoi(t.value)
 }
 
 func parseBoolean(t token) (bool, error) {
+	fmt.Printf("parseBoolean %v\n", t)
 	return strconv.ParseBool(t.value)
 }

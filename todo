@@ -1,0 +1,4 @@
+parse map splits on ; which captures ; of children too.
+(also note that when a child value is a:{}, it doesn't terminate in ;)
+so to get a child value that's a:{}, we can't scan to the end, and we can't scan to the next } since that child may have a:{} children of its own
+hmmm...
