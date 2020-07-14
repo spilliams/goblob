@@ -3,7 +3,6 @@ package parse
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // BlobParser represents an object that can parse blobs
@@ -20,7 +19,7 @@ func NewBlobParser() *BlobParser {
 // Empty arrays will parse as an empty map[string]interface{}
 func (bp *BlobParser) Parse(s string) error {
 	var err error
-	bp.parsedObj, err = parse(s)
+	bp.parsedObj, err = bp.parse(s)
 	return err
 }
 
@@ -29,8 +28,7 @@ func (bp *BlobParser) ParsedObject() interface{} {
 	return bp.parsedObj
 }
 
-func parse(s string) (interface{}, error) {
-	fmt.Printf("parse %s\n", s)
+func (bp *BlobParser) parse(s string) (interface{}, error) {
 	t, err := makeToken(s)
 	if err != nil {
 		return nil, err
@@ -93,6 +91,9 @@ func readList(s string) ([]token, error) {
 			}
 			tokenList = append(tokenList, t)
 			cursor = end
+			if end == -1 {
+				return tokenList, nil
+			}
 		}
 	}
 	return tokenList, nil
@@ -100,8 +101,6 @@ func readList(s string) ([]token, error) {
 
 // ex: a:N:{i:0;...}
 func parseList(listToken token) ([]interface{}, error) {
-	fmt.Printf("parseList %v\n", listToken)
-
 	// remove the curlies
 	readValue := listToken.value[1 : len(listToken.value)-1]
 	tokenChildren, err := readList(readValue)
@@ -124,33 +123,37 @@ func parseList(listToken token) ([]interface{}, error) {
 }
 
 // ex: a:N:{s:3:"key";...}
-func parseMap(t token) (map[string]interface{}, error) {
-	fmt.Printf("parseMap %v\n", t)
-	value := string(t.value[1 : len(t.value)-1])
-	split := strings.Split(value, ";")
-	dict := map[string]interface{}{}
-	for i := 0; i < len(split); i += 2 {
-		keyToken, err := makeToken(split[i])
-		if err != nil {
-			return nil, err
-		}
-		if keyToken.key != tokenStringKey {
-			return nil, fmt.Errorf("map key was type %v (expected %v)", keyToken.key, tokenStringKey)
-		}
-		val, err := parse(split[i+1])
-		if err != nil {
-			return nil, err
-		}
-		dict[string(keyToken.value)] = val
+func parseMap(mapToken token) (map[string]interface{}, error) {
+	// remove the curlies
+	readValue := mapToken.value[1 : len(mapToken.value)-1]
+	tokenChildren, err := readList(readValue)
+	if err != nil {
+		return nil, err
 	}
-	return dict, nil
+	mapValues := map[string]interface{}{}
+
+	for i := 0; i < len(tokenChildren); i += 2 {
+		keyToken := tokenChildren[i]
+		valueToken := tokenChildren[i+1]
+
+		childValue, err := parseToken(valueToken)
+		if err != nil {
+			return nil, err
+		}
+		// get rid of the quotes
+		key := keyToken.value[1 : len(keyToken.value)-1]
+		if keyToken.length != len(key) {
+			return nil, fmt.Errorf("key string is the wrong length (expected %v, actual %v)", keyToken.length, len(key))
+		}
+		mapValues[key] = childValue
+	}
+	return mapValues, nil
 }
 
 // ex: s:4:"abcd"
 func parseString(t token) (string, error) {
-	fmt.Printf("parseString %v\n", t)
+	// get rid of the quotes
 	s := t.value[1 : len(t.value)-1]
-	fmt.Printf("  s %s\n", s)
 	if t.length != len(s) {
 		return "", fmt.Errorf("string is the wrong length (expected %v, actual %v)", t.length, len(s))
 	}
@@ -158,11 +161,9 @@ func parseString(t token) (string, error) {
 }
 
 func parseInteger(t token) (int, error) {
-	fmt.Printf("parseInteger %v\n", t)
 	return strconv.Atoi(t.value)
 }
 
 func parseBoolean(t token) (bool, error) {
-	fmt.Printf("parseBoolean %v\n", t)
 	return strconv.ParseBool(t.value)
 }

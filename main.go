@@ -1,28 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
+	"os"
 
-	"github.com/spilliams/goblob/internal/parse"
+	"github.com/spilliams/goblob/cmd/goblob"
 )
 
 func main() {
-	// look for string arg
-	// or pipe in?
-
-	// parse string
-	p := parse.NewBlobParser()
-	err := p.Parse("s:4:\"1234\";")
-	if err != nil {
-		log.Fatal(err)
+	cmd := goblob.NewCmd()
+	if err := cmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	// output in json
-	out, err := json.Marshal(p.ParsedObject())
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(string(out))
 }
