@@ -5,6 +5,53 @@ import (
 	"testing"
 )
 
+func TestReadList(t *testing.T) {
+	cases := []struct {
+		name   string
+		input  string
+		expect []token
+	}{
+		{
+			name:  "integers",
+			input: "i:0;i:1;i:2;",
+			expect: []token{
+				{key: "i", length: 0, value: "0"},
+				{key: "i", length: 0, value: "1"},
+				{key: "i", length: 0, value: "2"},
+			},
+		},
+		{
+			name:  "mix",
+			input: "i:0;s:5:\"asdfg\";b:1;",
+			expect: []token{
+				{key: "i", length: 0, value: "0"},
+				{key: "s", length: 5, value: "\"asdfg\""},
+				{key: "b", length: 0, value: "1"},
+			},
+		},
+		{
+			name:  "array",
+			input: "a:1:{i:0;s:2:\"ab\";}a:1:{s:1:\"a\";s:0:\"\";}",
+			expect: []token{
+				{key: "a", length: 1, value: "{i:0;s:2:\"ab\";}"},
+				{key: "a", length: 1, value: "{s:1:\"a\";s:0:\"\";}"},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			actual, err := readList(c.input)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(actual, c.expect) {
+				t.Errorf("token mismatch. Expected: %v Actual: %v", c.expect, actual)
+			}
+		})
+	}
+}
+
 func TestBlobParsing(t *testing.T) {
 	p := NewBlobParser()
 
@@ -49,12 +96,13 @@ func TestBlobParsing(t *testing.T) {
 		// },
 		{
 			name:  "nested_list",
-			input: `a:2:{i:0;a:0:{}i:1;a:2:{s:2:"ab";b:0;s:2:"cd";a:1:{i:0;s:3:"abc";}}}`,
+			input: `a:2:{i:0;a:0:{}i:1;a:2:{i:0;b:0;i:1;s:2:"cd";i:2;a:1:{i:0;s:3:"abc";}}}`,
 			expect: []interface{}{
 				map[string]interface{}{},
-				map[string]interface{}{
-					"ab": false,
-					"cd": []interface{}{
+				[]interface{}{
+					false,
+					"cd",
+					[]interface{}{
 						"abc",
 					},
 				},

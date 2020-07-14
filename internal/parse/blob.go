@@ -35,6 +35,10 @@ func parse(s string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseToken(t)
+}
+
+func parseToken(t token) (interface{}, error) {
 	switch t.key {
 	case "a":
 		arrayType := string(t.value[1])
@@ -56,7 +60,7 @@ func parse(s string) (interface{}, error) {
 	case "b":
 		return parseBoolean(t)
 	default:
-		return nil, fmt.Errorf("unknown data type '%c' in input", s[0])
+		return nil, fmt.Errorf("unknown data type '%s' in input", t.key)
 	}
 }
 
@@ -67,23 +71,56 @@ const (
 	tokenStringKey = "s"
 )
 
+func readList(s string) ([]token, error) {
+	tokenList := []token{}
+	for cursor := 0; cursor < len(s); cursor++ {
+		switch s[cursor] {
+		case 'a':
+			open, _ := readUntil(s, cursor, '{')
+			close := matchBrace(s, open, '{', '}')
+			t, err := makeToken(s[cursor : close+1])
+			if err != nil {
+				return nil, err
+			}
+			tokenList = append(tokenList, t)
+			cursor = close
+			continue
+		default:
+			end, value := readUntil(s, cursor, ';')
+			t, err := makeToken(value)
+			if err != nil {
+				return nil, err
+			}
+			tokenList = append(tokenList, t)
+			cursor = end
+		}
+	}
+	return tokenList, nil
+}
+
 // ex: a:N:{i:0;...}
-func parseList(t token) ([]interface{}, error) {
-	fmt.Printf("parseList %v\n", t)
-	value := string(t.value[1 : len(t.value)-1])
-	split := strings.Split(value, ";")
-	list := []interface{}{}
-	for i, v := range split {
+func parseList(listToken token) ([]interface{}, error) {
+	fmt.Printf("parseList %v\n", listToken)
+
+	// remove the curlies
+	readValue := listToken.value[1 : len(listToken.value)-1]
+	tokenChildren, err := readList(readValue)
+	if err != nil {
+		return nil, err
+	}
+	listValues := []interface{}{}
+
+	for i, t := range tokenChildren {
 		if i%2 == 0 {
 			continue
 		}
-		parsedVal, err := parse(v)
+		childValue, err := parseToken(t)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, parsedVal)
+		listValues = append(listValues, childValue)
 	}
-	return list, nil
+	return listValues, nil
 }
 
 // ex: a:N:{s:3:"key";...}

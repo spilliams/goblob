@@ -19,3 +19,17 @@ func matchBrace(s string, start int, open rune, close rune) int {
 	}
 	return -1
 }
+
+// readUntil reads a given string starting at an index until it reaches a
+// certain rune (or the end of the string). Returns the number of characters
+// read as well as the substring between start and end (inclusive)
+func readUntil(s string, start int, until rune) (int, string) {
+	build := ""
+	for i := start; i < len(s); i++ {
+		build += string(s[i])
+		if rune(s[i]) == until {
+			return i, build
+		}
+	}
+	return len(s) - start, build
+}
